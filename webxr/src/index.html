@@ -5,7 +5,7 @@
 </head>
 
 <body>
-  <a-scene shadow="type: pcfsoft" physics="driver: local; debug: true; gravity: 0; friction: 0; restitution: 0;" renderer="antialias: true" cursor="rayOrigin: mouse" raycaster="objects: [cube]">
+  <a-scene stats shadow="type: pcfsoft" physics="driver: local; debug: true; gravity: 0; friction: 0; restitution: 0;" renderer="antialias: true" cursor="rayOrigin: mouse" raycaster="objects: [cube]">
     <a-assets>
       <a-mixin id="touch" class="hands" ></a-mixin>
     </a-assets>
@@ -272,6 +272,18 @@
     plot.setAttribute('rotation', '0 0 0');
   })
   
+
+  var xmax = 6
+  let intervall = setInterval(() => {
+    plot.setAttribute("graph", {
+      xMax: xmax
+    })
+    xmax += 0.1
+    if (xmax > 15) {
+      clearInterval(intervall)
+    }
+  }, 100);
+
 
   
 

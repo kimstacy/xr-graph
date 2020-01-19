@@ -47,7 +47,7 @@ AFRAME.registerComponent('graph', {
         }
     },
     init: function() {
-
+       
     },
     update: function() {
 
@@ -64,9 +64,9 @@ AFRAME.registerComponent('graph', {
             this.graph = this.createCurve(this.function.func, this.data);
         } else if (this.function.inputSize == 2) {
             if (this.function.outputSize == 1) {
-                this.graph = this.createGraph((x,y) => [x, y, this.function.func(x,y)], this.data);
+                this.createGraph((x,y) => [x, y, this.function.func(x,y)], this.data);
             } else {
-                this.graph = this.createGraph(this.function.func, this.data);
+                this.createGraph(this.function.func, this.data);
             }
         }
 
@@ -152,6 +152,7 @@ AFRAME.registerComponent('graph', {
 
         let segments = Math.max(xRange, zRange, 20);
         segments = Math.floor(segments) * segmentsMultiplier;
+        segments = 80;
 
         // x and y from 0 to 1
         const meshFunction = (x, z, vec3) => {
@@ -164,15 +165,40 @@ AFRAME.registerComponent('graph', {
                 vec3.set(result[0], result[2] || 0, result[1] || 0);
         };
 
-        this.graphGeometry = new THREE.ParametricBufferGeometry(meshFunction, segments, segments);
-        this.graphGeometry.scale(1, 1, 1);
+        if (this.graphGeometry == null) {
+            this.graphGeometry = new THREE.ParametricBufferGeometry(meshFunction, segments, segments);
+            this.graphGeometry.scale(1, 1, 1);
+            this.wireMaterial = this.createWireMaterial(segments);        
 
-        this.computeMinMaxRange(this.graphGeometry);
+            this.graph = new THREE.Mesh(this.graphGeometry, this.wireMaterial);
+        } else {
+            let vertices = []
+            let vec3 = new THREE.Vector3();
+            for (let i = 0; i <= segments; i++) {
+                for(let j = 0; j <= segments; j++) {
+                    let u = i / segments;
+                    let v = j / segments;
+                    meshFunction(u, v, vec3);
+                    vertices.push(vec3.x)
+                    vertices.push(vec3.y)
+                    vertices.push(vec3.z)
+                }
+            }
+            this.graph.geometry.setAttribute('position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+            //this.graph.geometry.attributes.position.array = vertices;
+            this.graph.geometry.attributes.position.needsUpdate = true;
+            //this.graphMesh.geometry = new THREE.ParametricBufferGeometry(meshFunction, segments, segments);
+        }
+
+        this.computeMinMaxRange(this.graph.geometry);
+        requestAnimationFrame(() => this.calculateVertexColor());
         
+    },
+    calculateVertexColor: function() {
         var colArr = []
         let color;
-        for(let i = 1; i < this.graphGeometry.attributes.position.array.length; i += 3) {
-            const yVal = this.graphGeometry.attributes.position.array[i];            
+        for(let i = 1; i < this.graph.geometry.attributes.position.array.length; i += 3) {
+            const yVal = this.graph.geometry.attributes.position.array[i];            
             color = new THREE.Color(0xffffff);
             // only change color if not infinte
             if (isFinite(this.yRange)) {
@@ -181,14 +207,9 @@ AFRAME.registerComponent('graph', {
             colArr = colArr.concat([color.r * 255, color.g * 255, color.b * 255]);
         }        
         var colors = new Uint8Array(colArr);
-       
-       // Don't forget to normalize the array! (third param = true)
-       this.graphGeometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3, true) );
-       
-        this.wireMaterial = this.createWireMaterial(segments);        
-
-        const graphMesh = new THREE.Mesh(this.graphGeometry, this.wireMaterial);
-        return graphMesh;
+    
+        // Don't forget to normalize the array! (third param = true)
+        this.graph.geometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3, true) );
     },
     createCurve: function(func, setting) {
          // set default values
